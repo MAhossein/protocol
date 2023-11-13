@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  app:
+    container_name: nextjs_app
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    env_file:
+      - .env.docker
+  db:
+    image: postgres:latest
+    volumes:
+      - protocol_smart_designer_db_data:/var/lib/postgresql/data
+    restart: always
+    env_file:
+      - .env.docker
+    ports:
+      - "5332:5432"
+  pgadmin:
+    image: dpage/pgadmin4
+    depends_on:
+      - db
+    restart: always
+    ports:
+      - "8383:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: default@email.com
+      PGADMIN_DEFAULT_PASSWORD: root
+
+volumes:
+  protocol_smart_designer_db_data: {}

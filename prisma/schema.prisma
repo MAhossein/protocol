@@ -1,0 +1,154 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(uuid()) @map("user_id")
+  name           String          @map("user_name")
+  email          String          @unique @map("user_email")
+  password       String
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at")
+  provider       String          @default("local")
+  active         Boolean         @default(false) @map("active")
+  role           Role            @default(USER) @map("user_role")
+  organisationId String?         @map("organisation_id")
+  organisation   Organisation?   @relation(fields: [organisationId], references: [id])
+  projects       Project[]
+  ProjectAccess  ProjectAccess[]
+  Comment        Comment[]
+  CommentRead    CommentRead[]
+
+  @@map("users")
+}
+
+model Organisation {
+  id                String   @id @default(uuid()) @map("organisation_id")
+  organisationName  String   @unique @map("organisation_name")
+  organisationEmail String   @unique @map("organisation_email")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
+  users             User[]
+
+  @@map("organisations")
+}
+
+model Project {
+  id                String             @id @default(uuid()) @map("project_id")
+  name              String             @map("project_name")
+  description       String             @map("project_description")
+  studyType         String             @map("project_study_type")
+  service           String             @default("Assisted service") @map("project_service")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at")
+  status            ProjectStatus      @default(in_progress) @map("project_status")
+  userId            String?            @map("user_id")
+  disabled          Boolean            @default(true) @map("project_disabled")
+  user              User?              @relation(fields: [userId], references: [id])
+  SynonymsToInclude SynonymToInclude[]
+  SynonymsToExclude SynonymToExclude[]
+  ProjectAccess     ProjectAccess[]
+  Comment           Comment[]
+
+  @@map("projects")
+}
+
+model Synonym {
+  id                String             @id @default(uuid()) @map("synonym_id")
+  name              String             @unique @map("synonym_name")
+  SynonymsToInclude SynonymToInclude[]
+  SynonymsToExclude SynonymToExclude[]
+
+  @@map("synonym")
+}
+
+model SynonymToInclude {
+  id        String   @id @default(uuid()) @map("synonym_to_include_id")
+  synonymId String?  @map("synonym_id")
+  synonym   Synonym? @relation(fields: [synonymId], references: [id])
+  projectId String?  @map("project_id")
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  @@map("synonymToInclude")
+}
+
+model SynonymToExclude {
+  id        String   @id @default(uuid()) @map("synonym_to_exclude_id")
+  synonymId String?  @map("synonym_id")
+  synonym   Synonym? @relation(fields: [synonymId], references: [id])
+  projectId String?  @map("project_id")
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  @@map("synonymToExclude")
+}
+
+model ProjectAccess {
+  id        String   @id @default(uuid()) @map("project_access_id")
+  userId    String?  @map("user_id")
+  projectId String?  @map("project_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  @@map("projectAccess")
+}
+
+enum Role {
+  USER  @map("user")
+  ADMIN @map("admin")
+
+  @@map("_Role")
+}
+
+enum ProjectStatus {
+  validated
+  reviewing
+  in_progress
+  commented
+}
+
+model Comment {
+  id          String        @id @default(uuid()) @map("comment_id")
+  body        String        @map("body")
+  userId      String?       @map("user_id")
+  projectId   String?       @map("project_id")
+  component   String?       @map("component")
+  page        String?       @map("page")
+  pagePath    String?       @map("page_path")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @default(now()) @updatedAt @map("updated_at")
+  user        User?         @relation(fields: [userId], references: [id])
+  project     Project?      @relation(fields: [projectId], references: [id])
+  replyToId   String?       @map("reply_to_id")
+  replyTo     Comment?      @relation("ReplyTo", fields: [replyToId], references: [id])
+  replies     Comment[]     @relation("ReplyTo")
+  status      CommentStatus @default(open) @map("comment_status")
+  CommentRead CommentRead[]
+
+  @@map("comment")
+}
+
+model CommentRead {
+  id        String   @id @default(uuid()) @map("comment_read_id")
+  userId    String?  @map("user_id")
+  commentId String?  @map("comment_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  comment   Comment? @relation(fields: [commentId], references: [id])
+
+  @@unique([commentId, userId])
+  @@map("comment_read")
+}
+
+enum CommentStatus {
+  open
+  pending_user_reply
+  closed_approved
+  closed_denied
+}
